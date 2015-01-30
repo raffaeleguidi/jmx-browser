@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+  <p>Found {{count}} threads beginning with "{{prefix}}"</p>
+  <ul>
+  {% for item in thread-names %}
+        <li>
+          <p>{{item|first}} - {{item.1}} - {{item.2}}</p>
+        </li>
+  {% endfor %}
+  </ul>  
+{% endblock %}

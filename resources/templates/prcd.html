@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+  <p>Thread names beginning with "qtp" for class: {{class}}</p>
+  <ul>
+  {% for item in thread-names %}
+        <li>
+          <p>{{item|first}} - {{item.1}}</p>
+        </li>
+  {% endfor %}
+  </ul>
+  <p>All thread names for class: {{class}}</p>
+  <ul>
+  {% for item in all-thread-names %}
+        <li>
+          <p>{{item|first}} - {{item.1}}</p>
+        </li>
+  {% endfor %}
+  </ul>
+  <p>Beans for class: {{class}}</p>
+  <ul>
+  {% for item in attrs %}
+        <li>
+          <p>{{item}}</p>
+        </li>
+  {% endfor %}
+  </ul>
+  <p>All thread IDs for class: {{class}}</p>
+  <ul>
+  {% for item in IDs %}
+        <li>
+          <p>{{item}}</p>
+        </li>
+  {% endfor %}
+  </ul>
+  
+{% endblock %}

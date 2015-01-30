@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>JMX connection to "{{host}}:{{port}}"</h1>
+  <p>Thread names beginning with "{{prefix}}"</p>
+  <ul>
+  {% for item in thread-names %}
+        <li>
+          <p>{{item|first}} - {{item.1}}</p>
+        </li>
+  {% endfor %}
+  </ul>  
+{% endblock %}
