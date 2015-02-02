@@ -1,10 +1,23 @@
 {% extends "base.html" %}
 {% block content %}
+  <p>
+  <form action="" method="GET">
+  	<label>host</label><br />
+  	<input type="text" name="host" value="{{host}}" /><br />
+  	<label>port</label><br />
+  	<input type="text" name="port" value="{{port}}" /><br />
+  	<label>prefix</label><br />
+  	<input type="text" name="prefix"  value="{{prefix}}" /><br />
+  	<hr />
+  	<input type="submit" value="search" />
+  	<hr />
+  </form>
+  </p>
   <p>Found {{count}} threads beginning with "{{prefix}}"</p>
   <ul>
   {% for item in thread-names %}
         <li>
-          <p>{{item|first}} - {{item.1}} - {{item.2}}</p>
+          <p>{{item|first}} - {{item.1}} - {{item.2}} - {{item.3}}</p>
         </li>
   {% endfor %}
   </ul>  

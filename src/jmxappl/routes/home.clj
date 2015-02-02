@@ -14,7 +14,7 @@
 
 (let [jmx-class-name "java.lang:type=Threading"]
 
-    (defn pool-page [host port name]
+    (defn pool-page [host port prefix]
       (jmx/with-connection {:host host :port port}
        (defn threadInfo [id]
             ;(info "threadInfo" id)
@@ -24,7 +24,7 @@
             ;(info "myThread" id)
             (try 
               (let [this-thread (threadInfo id)]
-	              [id (.get this-thread "threadName") (.get this-thread "threadState")]) 
+	              [id (.get this-thread "threadName") (.get this-thread "threadState")  (.get this-thread "lockName")]) 
               (catch Exception e (str "caught exception: " (.getMessage e)))))
 
 	       (defn allThreadIds []
@@ -33,19 +33,21 @@
          (let [allThreads (with-local-vars [threads []]                
 	                           (doseq [id (allThreadIds)]
 	                             (let [tt (myThread id)]
-	                               (var-set threads (conj @threads tt))))                                
+                                 ;(info "tt.1" (nth tt 1) (.startsWith (nth tt 1) prefix))
+;                                 (var-set threads (if (.startsWith (str (nth tt 1)) prefix) (conj @threads tt) threads))))
+                                 (var-set threads (if (.startsWith (str (nth tt 1)) (str prefix)) (conj @threads tt) (set @threads)))))
+;	                               (var-set threads (conj @threads tt))))                                
                             @threads)]
 
-           (let [filtered (filter (fn [tt]
-                                    (.startsWith (nth tt 1) name))
-                                  allThreads)]
+           (layout/render "pool.html" {:host host
+                                       :port port
+                                       :prefix prefix
+                                       :count (.size allThreads)
+                                       :thread-names allThreads})))))
 
-            (layout/render "pool.html" {:prefix name
-                                        :count (.size filtered)
-                                        :thread-names filtered}))))))
    
  (defroutes home-routes
   (GET "/" [] (home-page))
   (GET "/about" [] (about-page))
   (GET "/pool/:host/:port" [host port] (pool-page host port ""))
-  (GET "/pool/:host/:port/:name" [host port name] (pool-page host port (str name))))
+  (GET "/pool" [host port prefix] (pool-page host port (str prefix))))
