@@ -1,24 +1,34 @@
 {% extends "base.html" %}
 {% block content %}
   <p>
-  <form action="" method="GET">
+  <form action="/pool" method="GET">
   	<label>host</label><br />
   	<input type="text" name="host" value="{{host}}" /><br />
   	<label>port</label><br />
   	<input type="text" name="port" value="{{port}}" /><br />
   	<label>prefix</label><br />
   	<input type="text" name="prefix"  value="{{prefix}}" /><br />
-  	<hr />
+  	<br />
   	<input type="submit" value="search" />
   	<hr />
   </form>
   </p>
-  <p>Found {{count}} threads beginning with "{{prefix}}"</p>
-  <ul>
+  <h3>Found {{count}} threads beginning with "{{prefix}}"</h3>
+  
+  <table class="table table-striped" width="100%">
+	  <tr>
+	  	<th>ID</th>
+	  	<th>Name</th>
+	  	<th>State</th>
+	  	<th>Lockname</th>
+	  </tr>
   {% for item in thread-names %}
-        <li>
-          <p>{{item|first}} - {{item.1}} - {{item.2}} - {{item.3}}</p>
-        </li>
+	  <tr>
+          	<td>{{item|first}}</td>
+			<td>{{item.1}}</td>
+			<td>{{item.2}}</td>
+			<td>{{item.3}}</td>
+  	  </tr>
   {% endfor %}
-  </ul>  
+  </table>  
 {% endblock %}
