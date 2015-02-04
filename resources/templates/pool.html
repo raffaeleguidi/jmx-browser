@@ -1,6 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
-  <p>
+  <h1>JMX Threads Browser</h1>
+  <p>Connect to a remote JVM using JMX/RMI and press "search"  to inspect its threads dynamically
+	(BPM=5119,
+	SOA=5120,
+	BE-CANALI=5121,
+	H24=5122,
+	PAPERLESS=5123)
+</p>
+  <hr >
   <form action="/pool" method="GET">
   	<label>host</label><br />
   	<input type="text" name="host" value="{{host}}" /><br />
@@ -13,7 +21,7 @@
   	<hr />
   </form>
   </p>
-  <h3>Found {{count}} threads beginning with "{{prefix}}"</h3>
+  <h3>Found {{count}} threads beginning with "{{prefix}}" ({{acceptors}} acceptors, {{workers}} workers, {{parked}} parked)</h3>
   
   <table class="table table-striped" width="100%">
 	  <tr>

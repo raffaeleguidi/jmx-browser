@@ -33,7 +33,8 @@
 	         (try 
 	           (let [this-thread (threadInfo id)]
 		           [id (.get this-thread "threadName") (.get this-thread "threadState")  (.get this-thread "lockName")]) 
-	           (catch Exception e (str "caught exception: " (.getMessage e)))))
+	           (catch Exception e 
+               [id (.getMessage e) "" ""])))
 	
 		    (defn allThreadIds []
 		      (jmx/read jmx-class-name :AllThreadIds))
@@ -43,15 +44,23 @@
 		                          (let [tt (myThread id)]
 	                              (var-set threads (if (.startsWith (str (nth tt 1)) (str prefix)) (conj @threads tt) (set @threads)))))
 	                         @threads)]
-	
-	        (layout/render "pool.html" {:host host
-	                                    :port port
-	                                    :prefix prefix
-	                                    :count (if (empty? allThreads) 0 (.size allThreads))
-	                                    :thread-names allThreads}))))
+         
+         (defn sizeOrZero [set] 
+           (if (empty? set) 0 (.size set)))
+         
+         (let [parked (for [t allThreads :when (.startsWith (str (nth t 3)) "java.util.concurrent.CountDownLatch")] t)]
+           (let [acceptors (for [t allThreads :when (if (not(= -1 (int (.indexOf (str (second t)) "Acceptor")))) true false)] t)]
+                     (layout/render "pool.html" {:host host
+	                                                :port port
+	                                                :prefix prefix
+	                                                :parked (sizeOrZero parked)
+	                                                :acceptors (sizeOrZero acceptors)
+	                                                :workers (- (sizeOrZero allThreads) (sizeOrZero acceptors))
+	                                                :count (sizeOrZero allThreads)
+	                                                :thread-names (sort-by last (sort-by second allThreads))})))))
         
         )
-      )
+      ))
 
    
  (defroutes home-routes

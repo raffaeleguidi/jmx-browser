@@ -24,14 +24,21 @@
       {% block content %}
       {% endblock %}
     </div>
-    <!-- scripts and styles -->
+    <!-- scripts and styles - CDN
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.0/css/bootstrap.min.css">
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.0/css/bootstrap-theme.min.css">
+    -->
+    {% style "/css/bootstrap.min.css" %}
+    {% style "/css/bootstrap-theme.min.css" %}
     {% style "/css/screen.css" %}
 
+    {% script "/js/jquery-2.1.1.min.js" %}
+    {% style "/js/bootstrap.min.js" %}
+    <!-- CDN
     <script src="//code.jquery.com/jquery-2.1.1.min.js" type="text/javascript"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.0/js/bootstrap.min.js"></script>
-
+	 -->
+	 
     <script type="text/javascript">
       var context = "{{servlet-context}}";
     </script>
