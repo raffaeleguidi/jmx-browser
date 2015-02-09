@@ -5,41 +5,85 @@
             [clojure.java.jmx :as jmx])
   (:use [taoensso.timbre :only [trace debug info warn error fatal]]))
 
-(def jmx-class-name "java.lang:type=Threading")
+(def jmx-threading "java.lang:type=Threading")
+(def jmx-gc "java.lang:type=GarbageCollector,name=PS MarkSweep")
 
 (defn sizeOrZero [set] 
    (if (empty? set) 0 (.size set)))
          
-(defn pool-api [host port prefix]
+(defn pool-api [host port prefix force-gc]
 
   (jmx/with-connection {:host host :port port}
+     (defn gc-endtime []
+        (get (get (jmx/mbean jmx-gc) :LastGcInfo) :endTime)) 
+     
+     (defn gc-duration []
+        (get (get (jmx/mbean jmx-gc) :LastGcInfo) :duration))
+     
+     (defn gc-count []
+        (get (jmx/mbean jmx-gc) :CollectionCount))
+     
+     (defn gc-time []
+        (get (jmx/mbean jmx-gc) :CollectionTime))
+     
+     (defn gc-invoke-collection []
+       (jmx/invoke "java.lang:type=Memory" :gc))
+     
      (defn threadInfo [id]
-        (jmx/invoke jmx-class-name :getThreadInfo id))
-  	
+        (jmx/invoke jmx-threading :getThreadInfo id))
+     
      (defn myThread [id]
         (try 
           (let [this-thread (threadInfo id)]
-            [id (.get this-thread "threadName") (.get this-thread "threadState")  (.get this-thread "lockName")]) 
+            {:id id
+             :threadName (.get this-thread "threadName")
+             :threadState (.get this-thread "threadState")
+             :lockName (.get this-thread "lockName")}) 
           (catch Exception e 
-            [id (.getMessage e) "" ""])))
+            {:id id 
+             :threadState (.getMessage e) 
+             :threadName "" 
+             :lockName ""})))
 
      (defn allThreadIds []
-       (jmx/read jmx-class-name :AllThreadIds)))					
+       (jmx/read jmx-threading :AllThreadIds)))			
+
+  (comment (jmx/invoke "java.lang:type=Memory" :gc)
+  (info "gc-all" (jmx/mbean jmx-gc))			
+  (info "gc-count" (get (jmx/mbean jmx-gc) :CollectionCount))			
+  (info "gc-time" (get (jmx/mbean jmx-gc) :CollectionTime))			
+  (info "gc-time" (get (jmx/mbean jmx-gc) :StartTime)))
+  
+  (if (or (= "true" force-gc) (= "yes" force-gc))
+    (do 
+      (info "forcing gc")
+      (gc-invoke-collection)
+      (info "done forcing gc")))
   
   (let [allThreads (with-local-vars [threads []]                
 	                    (doseq [id (allThreadIds)]
 	                      (let [tt (myThread id)]
-                          (var-set threads (if (.startsWith (str (nth tt 1)) (str prefix)) (conj @threads tt) (set @threads)))))
+                          (var-set threads (if (.startsWith (str (get tt :threadName)) (str prefix)) (conj @threads tt) (set @threads)))))
                      @threads)]     
-     (let [parked (for [t allThreads :when (.startsWith (str (nth t 3)) "java.util.concurrent.CountDownLatch")] t)]
-        (let [acceptors (for [t allThreads :when (if (not(= -1 (int (.indexOf (str (second t)) "Acceptor")))) true false)] t)]
+     (let [parked (for [t allThreads :when (.startsWith (str (get t :lockName )) "java.util.concurrent.CountDownLatch")] t)]
+        (let [acceptors (for [t allThreads :when (if (not(= -1 (int (.indexOf (str (get t :threadName)) "Acceptor")))) true false)] t)]
             {:body {:host host
                      :port port
-                     :prefix prefix
-                     :parked (sizeOrZero parked)
-                     :acceptors (sizeOrZero acceptors)
-                     :workers (- (sizeOrZero allThreads) (sizeOrZero acceptors))
-                     :count (sizeOrZero allThreads)}}))))
+                     :threads {
+                       :prefix prefix
+                       :parked (sizeOrZero parked)
+                       :acceptors (sizeOrZero acceptors)
+                       :workers (- (sizeOrZero allThreads) (sizeOrZero acceptors))
+                       :count (sizeOrZero allThreads)
+                     ;:threads allThreads
+                     }
+                     :GC {
+                       :count (gc-count)
+                       :time (gc-time)
+                       :last {
+                         :duration (gc-duration)
+                         :endTime (gc-endtime) 
+                       }}}}))))
    
 (defroutes api-routes
-  (GET "/API/pool" [host port prefix] (pool-api host port (str prefix))))
+  (GET "/API/pool" [host port prefix force-gc] (pool-api host port (str prefix) force-gc)))
