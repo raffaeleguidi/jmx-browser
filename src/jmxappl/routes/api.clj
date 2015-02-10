@@ -60,11 +60,14 @@
       (gc-invoke-collection)
       (info "done forcing gc")))
   
-  (let [allThreads (with-local-vars [threads []]                
-	                    (doseq [id (allThreadIds)]
-	                      (let [tt (myThread id)]
-                          (var-set threads (if (.startsWith (str (get tt :threadName)) (str prefix)) (conj @threads tt) (set @threads)))))
-                     @threads)]     
+  (let [allThreads 
+        (with-local-vars [threads []]                
+	         (doseq [id (allThreadIds)]
+	           (let [tt (myThread id)]
+               (var-set threads 
+                  (if (.startsWith (str (get tt :threadName)) (str prefix)) 
+                    (conj @threads tt) (set @threads)))))
+          @threads)]     
      (let [parked (for [t allThreads :when (.startsWith (str (get t :lockName )) "java.util.concurrent.CountDownLatch")] t)]
         (let [acceptors (for [t allThreads :when (if (not(= -1 (int (.indexOf (str (get t :threadName)) "Acceptor")))) true false)] t)]
             {:body {:host host

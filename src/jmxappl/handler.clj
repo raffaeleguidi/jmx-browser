@@ -1,5 +1,6 @@
 (ns jmxappl.handler
   (:require [compojure.core :refer [defroutes]]
+            [jmxappl.routes.api2 :refer [api2-routes]]
             [jmxappl.routes.api :refer [api-routes]]
             [jmxappl.routes.home :refer [home-routes]]
             [jmxappl.middleware :refer [load-middleware]]
@@ -64,7 +65,7 @@
 
 (def app (app-handler
            ;; add your application routes here
-           [api-routes home-routes base-routes]
+           [api2-routes api-routes home-routes base-routes]
            ;; add custom middleware here
            :middleware (load-middleware)
            :ring-defaults (mk-defaults false)
