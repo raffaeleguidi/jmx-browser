@@ -80,7 +80,13 @@
                          :workers (- (sizeOrZero allThreads) (sizeOrZero acceptors))
                          :count (sizeOrZero allThreads)
                        ;:threads allThreads
-                       }}})))))
+                       :GC {
+                       :count (gc-count)
+                       :time (gc-time)
+                       :last {
+                         :duration (gc-duration)
+                         :endTime (gc-endtime) 
+                       }}}}})))))
    
 (defroutes api2-routes
   (GET "/API2/pool" [host port prefix force-gc] (pool-api host port (str prefix) force-gc)))
