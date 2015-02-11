@@ -2,6 +2,7 @@
   (:require [compojure.core :refer :all]
             [jmxappl.layout :as layout]
             [jmxappl.util :as util]
+            [clojure.pprint :as p]
             [clojure.java.jmx :as jmx])
   (:use [taoensso.timbre :only [trace debug info warn error fatal]]))
 
@@ -9,28 +10,12 @@
 
 (def jmx-threading "java.lang:type=Threading")
 (def jmx-gc-base "java.lang:type=GarbageCollector")
-(def jmx-gc "")
-;(def jmx-gc "java.lang:type=GarbageCollector,name=PS MarkSweep")
-;(def jmx-gc "java.lang:name=MarkSweepCompact,type=GarbageCollector")
-;GC_NAME = "java.lang:name=MarkSweepCompact,type=GarbageCollector";
 
-(defn gc []
-   (jmx/mbean jmx-gc))
-  
 (defn gc [algorithm]
    (jmx/mbean (str jmx-gc-base ",name=" algorithm)))
   
-(defn gc-last []
-   (get (gc) :LastGcInfo))
- 
 (defn gc-last [algorithm]
    (get (gc algorithm) :LastGcInfo))
- 
-(defn gc-count []
-   (get (gc) :CollectionCount))
- 
-(defn gc-time []
-   (get (gc) :CollectionTime))
  
 (defn gc-invoke-collection []
   (jmx/invoke "java.lang:type=Memory" :gc))
@@ -96,12 +81,29 @@
                          :threads allThreads
                        }}})))))
    
+(defn oracle-last-gc [last]
+  {:id (:id last)
+   :style "oracle-1.7"
+   :duration (:duration last)
+   :startTime (:startTime last)
+   :endTime (:endTime last)})
+ 
+(defn ibm-last-gc [last]
+  {:id (:CollectionCount last)
+   :style "ibm-1.6"
+   :duration (- (:LastCollectionEndTime last) (:LastCollectionStartTime last))
+   :startTime (:LastCollectionStartTime last)
+   :endTime (:LastCollectionEndTime last)})
+ 
+(defn last-info [gc]
+  (if (:LastCollectionStartTime  gc) (ibm-last-gc gc) (oracle-last-gc (:LastGcInfo  gc)) ))
+   
+        
 (defn gc-api [host port algorithm force-gc]
   ;see http://www.fasterj.com/articles/oraclecollectors1.shtml
   (jmx/with-connection {:host host :port port}
     (if (empty? algorithm)
        (do 
-         (info (jmx/mbean-names (str jmx-gc-base ",name=*")))
          {:body {:algorithms (for [s (jmx/mbean-names (str jmx-gc-base ",name=*"))](str s))}}
          )
        (do
@@ -113,18 +115,30 @@
               (gc-invoke-collection)
               (info "done forcing gc")))
   
+         (p/pprint (gc algorithm))
+         
+(comment
+  "ibm jdk 1.6"
+  {:MemoryUsed 1581532768,
+	 :TotalCompacts 4,
+	 :LastCollectionStartTime 1423666447160,
+	 :LastCollectionEndTime 1423666450924,
+	 :CollectionTime 15201,
+	 :Name "MarkSweepCompact",
+	 :TotalMemoryFreed 3706964176,
+	 :MemoryPoolNames ["Java heap"],
+	 :CollectionCount 9,
+	 :Valid true}
+)
+         
          {:body {:host host
                   :port port                       
                   :GC {
                   :algorithm algorithm
                   :count (get (gc algorithm) :CollectionCount)
                   :time (get (gc algorithm) :CollectionTime)
-                  :last {
-                    :id (get (gc-last algorithm) :id)
-                    :duration (get (gc-last algorithm) :duration)
-                    :startTime (get (gc-last algorithm) :startTime)
-                    :endTime (get (gc-last algorithm) :endTime) 
-                  }}}}))))
+                  :avg (/ (get (gc algorithm) :CollectionTime) (get (gc algorithm) :CollectionCount))
+                  :last (last-info (gc algorithm))}}}))))
    
 (defroutes api-routes
   (GET "/API/gc" [host port algorithm force-gc] (gc-api host port algorithm force-gc))
