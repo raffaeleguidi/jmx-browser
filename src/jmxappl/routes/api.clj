@@ -13,140 +13,102 @@
 
 (defn gc [algorithm]
    (jmx/mbean (str jmx-gc-base ",name=" algorithm)))
-  
+
 (defn gc-last [algorithm]
    (get (gc algorithm) :LastGcInfo))
- 
+
 (defn gc-invoke-collection []
   (jmx/invoke "java.lang:type=Memory" :gc))
- 
+
 (defn threadInfo [id]
    (jmx/invoke jmx-threading :getThreadInfo id))
- 
+
 (defn myThread [id]
-   (try 
+   (try
      (let [this-thread (threadInfo id)]
        {:id id
         :threadName (.get this-thread "threadName")
         :threadState (.get this-thread "threadState")
-        :lockName (.get this-thread "lockName")}) 
-     (catch Exception e 
-       {:id id 
-        :threadState (.getMessage e) 
-        :threadName "" 
+        :lockName (.get this-thread "lockName")})
+     (catch Exception e
+       {:id id
+        :threadState (.getMessage e)
+        :threadName ""
         :lockName ""})))
 
 (defn allThreadIds []
-  (jmx/read jmx-threading :AllThreadIds))	
+  (jmx/read jmx-threading :AllThreadIds))
 
 (defn filtered-threads [prefix]
-  (with-local-vars [threads []]                
+  (with-local-vars [threads []]
          (doseq [id (allThreadIds)]
            (let [tt (myThread id)]
-             (var-set threads 
-                (if (.startsWith (str (get tt :threadName)) (str prefix)) 
+             (var-set threads
+                (if (.startsWith (str (get tt :threadName)) (str prefix))
                   (conj @threads tt) (set @threads)))))
         @threads))
-  
+
 (defn pool-api [host port prefix]
-  (jmx/with-connection {:host host :port port}
+  (let [startedAt (System/currentTimeMillis)]
+    (jmx/with-connection {:host host :port port}
 
-    (let [allThreads (filtered-threads prefix)]     
-       (let [parked (for [t allThreads :when (.startsWith (str (get t :lockName )) "java.util.concurrent.CountDownLatch")] t)]
-          (let [acceptors (for [t allThreads :when (if (not(= -1 (int (.indexOf (str (get t :threadName)) "Acceptor")))) true false)] t)]
-              {:body {:host host
-                       :port port
-                       :prefix prefix
-                       :parked (util/sizeOrZero parked)
-                       :acceptors (util/sizeOrZero acceptors)
-                       :workers (- (util/sizeOrZero allThreads) (util/sizeOrZero acceptors))
-                       :count (util/sizeOrZero allThreads)
-                       ;:threads allThreads
-                       }})))))
-
-(defn pool2-api [host port prefix]
-  (jmx/with-connection {:host host :port port}
-   
-    (let [allThreads (filtered-threads prefix)]     
-       (let [parked (for [t allThreads :when (.startsWith (str (get t :lockName )) "java.util.concurrent.CountDownLatch")] t)]
-          (let [acceptors (for [t allThreads :when (if (not(= -1 (int (.indexOf (str (get t :threadName)) "Acceptor")))) true false)] t)]
-              {:body {:host host
-                       :port port
-                       :pool {
+      (let [allThreads (filtered-threads prefix)]
+         (let [parked (for [t allThreads :when (.startsWith (str (get t :lockName )) "java.util.concurrent.CountDownLatch")] t)]
+            (let [acceptors (for [t allThreads :when (if (not(= -1 (int (.indexOf (str (get t :threadName)) "Acceptor")))) true false)] t)]
+                {:body {:host host
+                         :port port
                          :prefix prefix
                          :parked (util/sizeOrZero parked)
                          :acceptors (util/sizeOrZero acceptors)
                          :workers (- (util/sizeOrZero allThreads) (util/sizeOrZero acceptors))
                          :count (util/sizeOrZero allThreads)
-                         :threads allThreads
-                       }}})))))
-   
+                         :timeTaken (- (System/currentTimeMillis) startedAt)
+                         ;:threads allThreads
+                         }}))))))
+
 (defn oracle-last-gc [last]
   {:id (:id last)
    :style "oracle-1.7"
    :duration (:duration last)
    :startTime (:startTime last)
    :endTime (:endTime last)})
- 
+
 (defn ibm-last-gc [last]
   {:id (:CollectionCount last)
    :style "ibm-1.6"
    :duration (- (:LastCollectionEndTime last) (:LastCollectionStartTime last))
    :startTime (:LastCollectionStartTime last)
    :endTime (:LastCollectionEndTime last)})
- 
+
 (defn last-info [gc]
   (if (:LastCollectionStartTime  gc) (ibm-last-gc gc) (oracle-last-gc (:LastGcInfo  gc)) ))
-   
-        
+
+
 (defn gc-api [host port algorithm force-gc]
-  ;see http://www.fasterj.com/articles/oraclecollectors1.shtml
+  "all things garbage collection" ;http://www.fasterj.com/articles/oraclecollectors1.shtml
   (jmx/with-connection {:host host :port port}
     (if (empty? algorithm)
-       (do 
+       (do
          {:body {:algorithms (for [s (jmx/mbean-names (str jmx-gc-base ",name=*"))](str s))}}
          )
        (do
          (info (jmx/mbean-names (str jmx-gc-base ",name=*")))
-      
+
          (if (or (= "true" force-gc) (= "yes" force-gc))
-            (do 
+            (do
               (info "forcing gc")
               (gc-invoke-collection)
               (info "done forcing gc")))
-  
-         (p/pprint (gc algorithm))
-         
-(comment
-  "ibm jdk 1.6"
-  {:MemoryUsed 1581532768,
-	 :TotalCompacts 4,
-	 :LastCollectionStartTime 1423666447160,
-	 :LastCollectionEndTime 1423666450924,
-	 :CollectionTime 15201,
-	 :Name "MarkSweepCompact",
-	 :TotalMemoryFreed 3706964176,
-	 :MemoryPoolNames ["Java heap"],
-	 :CollectionCount 9,
-	 :Valid true}
-)
-         
+
          {:body {:host host
-                  :port port                       
+                  :port port
                   :GC {
                   :algorithm algorithm
                   :count (get (gc algorithm) :CollectionCount)
                   :time (get (gc algorithm) :CollectionTime)
                   :avg (/ (get (gc algorithm) :CollectionTime) (get (gc algorithm) :CollectionCount))
                   :last (last-info (gc algorithm))}}}))))
-   
+
 (defroutes api-routes
   (GET "/API/gc" [host port algorithm force-gc] (gc-api host port algorithm force-gc))
-  (GET "/API/poolWithThreads" [host port prefix] (pool2-api host port prefix))
   (GET "/API/pool" [host port prefix] (pool-api host port prefix)))
-
-
-
-
-
-
