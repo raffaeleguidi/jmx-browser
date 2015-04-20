@@ -1,10 +1,8 @@
-# jmxappl
+# jmx-browser
 
-FIXME
+This application exposes restful services to inspect GC and threads of IBM and Oracle JVMs over RMI (non protected)
 
-## What is it
-
-The application exposes restful services to inspect GC and threads of IBM and Oracle JVMs over RMI (non protected)
+## Usage
 
     http://<host>:<port>/
     
