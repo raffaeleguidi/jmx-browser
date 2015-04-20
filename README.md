@@ -22,8 +22,6 @@ Lists threads for the specified prefix. Acceptor and blocked threads are returne
 
     http://<host>:<port>/API/pool?host=<jmxserver>&port=<jmxport>&prefix=<prefix>
 
-
-
 ## Prerequisites
 
 You will need [Leiningen][1] 2.0 or above installed.
