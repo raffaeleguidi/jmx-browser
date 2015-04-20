@@ -4,24 +4,21 @@ This application exposes restful services to inspect GC and threads of IBM and O
 
 ## Usage
 
+Main page - useful to check connections and interactively inspect threads
+    
     http://<host>:<port>/
     
-    A sample web page to inspect threads
+API call to list GC algorithms of the target JVM (returns a JSON payload)
     
-
     http://<host>:<port>/API/gc?host=<jmxserver>&port=<jmxport>&algorithms
     
-    List GC algorithms of the target JVM
-    
-    
-    http://<host>:<port>/API/gc?host=<jmxserver>&port=<jmxport>&algorithm=<algorithm>
-    
-    List GCs of the target JVM for the specified algorithm
+List GCs of the target JVM for the specified algorithm (returns a JSON payload)
 
+    http://<host>:<port>/API/gc?host=<jmxserver>&port=<jmxport>&algorithm=<algorithm>
+        
+Lists threads for the specified prefix. Acceptor and blocked threads are returned (returns a JSON payload)
 
     http://<host>:<port>/API/pool?host=<jmxserver>&port=<jmxport>&prefix=<prefix>
-    
-    Lists threads for the specified prefix. Acceptor and blocked threads are returned    
     
 
 ## Prerequisites
