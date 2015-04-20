@@ -88,9 +88,7 @@
   "all things garbage collection" ;http://www.fasterj.com/articles/oraclecollectors1.shtml
   (jmx/with-connection {:host host :port port}
     (if (empty? algorithm)
-       (do
-         {:body {:algorithms (for [s (jmx/mbean-names (str jmx-gc-base ",name=*"))](str s))}}
-         )
+       (do {:body {:algorithms (for [s (jmx/mbean-names (str jmx-gc-base ",name=*"))](str s))}})
        (do
          (info (jmx/mbean-names (str jmx-gc-base ",name=*")))
 
@@ -106,7 +104,8 @@
                   :algorithm algorithm
                   :count (get (gc algorithm) :CollectionCount)
                   :time (get (gc algorithm) :CollectionTime)
-                  :avg (/ (get (gc algorithm) :CollectionTime) (get (gc algorithm) :CollectionCount))
+                  ; handle divide by zero exception before re-enabling
+                  ;:avg (/ (get (gc algorithm) :CollectionTime) (get (gc algorithm) :CollectionCount))
                   :last (last-info (gc algorithm))}}}))))
 
 (defroutes api-routes
